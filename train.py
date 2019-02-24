@@ -13,6 +13,7 @@ import os
 from keras import backend as K
 import tensorflow as tf
 import numpy as np
+from keras.callbacks import ModelCheckpoint
 
 
 
@@ -28,97 +29,58 @@ import numpy as np
 parser = argparse.ArgumentParser()
 parser.add_argument("--save_weights_path", type = str  )
 parser.add_argument("--train_images", type = str  )
-parser.add_argument("--train_annotations", type = str  )
+parser.add_argument("--train_images2", type = str  )
 parser.add_argument("--n_classes", type=int )
 parser.add_argument("--input_height", type=int , default = 1248  )
 parser.add_argument("--input_width", type=int , default = 1248 )
-
-parser.add_argument('--validate',action='store_false')
-parser.add_argument("--val_images", type = str , default = "")
-parser.add_argument("--val_annotations", type = str , default = "")
+parser.add_argument("--mouse_height", type=int , default = 384 )
+parser.add_argument("--mouse_width", type=int , default = 384  )
 
 parser.add_argument("--epochs", type = int, default = 5 )
 parser.add_argument("--batch_size", type = int, default = 1 )
-parser.add_argument("--val_batch_size", type = int, default = 1 )
 parser.add_argument("--load_weights", type = str , default = "")
 
-parser.add_argument("--model_name", type = str , default = "")
 parser.add_argument("--optimizer_name", type = str , default = "adadelta")
+parser.add_argument("--checkpoints", type = str , default = "/home/hsuri/Datathon/weights/seg_")
 
 
 args = parser.parse_args()
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-train_images_path = args.train_images
-train_segs_path = args.train_annotations
+train_images_path1 = args.train_images
+train_images_path2 = args.train_images2
 train_batch_size = args.batch_size
 n_classes = args.n_classes
 input_height = args.input_height
 input_width = args.input_width
-validate = args.validate
+mouse_height = args.mouse_height
+mouse_width = args.mouse_width
 save_weights_path = args.save_weights_path
 epochs = args.epochs
 load_weights = args.load_weights
+checkpoint = args.checkpoints
 
 optimizer_name = args.optimizer_name
-model_name = args.model_name
-validate = True
 
-
-#modelFN = models.segnet
-
-#m = modelFN( n_classes , input_height=input_height, input_width=input_width)
-#m.compile(loss='binary_crossentropy',
-#      optimizer= optimizer_name ,
-#      metrics=['accuracy'])
-m = models.unet()
-
+m = models.NeuronSegNet(input_height, input_width)
 
 if len( load_weights ) > 0:
     m.load_weights(load_weights)
-
-
-#print("Model output shape" ,  m.output_shape)
-
-#output_height = m.outputHeight
-#output_width = m.outputWidth
-temp1 = '/home/hsuri/Datathon/fruit_fly_volumes.npz'
-temp2 = '/home/hsuri/Datathon/mouse_volumes.npz'
-
-Xtrain, Ytrain, Xval, Yval  = data_loader.generateSplit(temp1,temp2, 
-                                                        split= 0.2, validate=1)
-#for  index,row in enumerate(Ytrain):
-#    newYtrain = np.zeros((Ytrain.shape[0],input_width*input_height,n_classes))
-
-#    y = np.reshape(row, (input_width*input_height, n_classes))
-#    newYtrain[index] = y
-    
-#for  index, row  in enumerate(Yval):
-#    newYval = np.zeros((Yval.shape[0],input_width*input_height,n_classes))
-#    y = np.reshape(row, (input_width*input_height, n_classes))
-#    newYval[index] = y
-
-                
-        
+Xtrain, Ytrain, Xval, Yval  = data_loader.generateSplit(train_images_path1,
+              train_images_path2,input_height, input_width, 
+              mouse_width,merge=160, split= 0.2, validate=1)
 
 tg = data_loader.MovieGenerator( train_batch_size, len(Xtrain), Xtrain,Ytrain)
 vg = data_loader.MovieGenerator( train_batch_size, len(Xval), Xval, Yval)
         
-        
 
+filepath = checkpoint + "weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
+checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, 
+                             save_best_only=True, mode='max')
+#restore_ckpt_callback = RestoreCkptCallback(pretrian_model_path='./XXXX.ckpt') 
+callbacks_list = [checkpoint]
+m.fit_generator(generator=tg, validation_data=vg,steps_per_epoch=2500,
+                epochs=epochs,validation_steps=100,callbacks = callbacks_list)
 
-#Xtrain, Ytrain, Xval, Yval = data_loader.generateSplit(train_images_path, 0.2, 
-#                                                       validate)
-#G = data_loader.generateTrainingImages(Xtrain, Ytrain,train_batch_size, 
-#                                       n_classes, input_height,input_width)
+m.save_weights(save_weights_path)
 
-#Gval = data_loader.generateValidationImages(Xval, Yval)
-
-
-
-m.fit_generator(generator=tg, validation_data=vg,steps_per_epoch=2500,epochs=1,
-                validation_steps=100)
-
-m.save_weights('/home/hsuri/Datathon/first_weights.h5' )
-print('yeet')
-#m.save( save_weights_path + ".model." + str( 1 ) )
 

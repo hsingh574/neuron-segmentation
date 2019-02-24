@@ -20,24 +20,26 @@ import cv2
 
 #returns the samples and the labels in two numpy arrays
 
-#works for both training and testing
+#combine part of the mouse dataset with the fruit fly dataset to aid in 
+#generalizability of the model,
 
 
-def getSamples(path1, path2):
+def getSamples(path1, path2, input_height, input_width, mouse_height, 
+               mouse_width, merge = 160):
     data = np.load(path1)
     data2 = np.load(path2)
     volume = np.expand_dims(data['volume'], axis=-1)
     volume2 = np.expand_dims(data2['volume'], axis=-1)
     
-    blankvol2 = np.zeros((90,1248,1248,1))
+    blankvol2 = np.zeros((merge,input_height,input_width,1))
     for ind, row in enumerate(volume2):
-        if ind >= 90:
+        if ind >= merge:
             continue
         else:
-            x = np.reshape(row,(384,384))
+            x = np.reshape(row,(mouse_height,mouse_width))
     
-            x = cv2.resize(x,(1248,1248))
-            x = np.reshape(x,(1248,1248,1))
+            x = cv2.resize(x,(input_height,input_width))
+            x = np.reshape(x,(input_height,input_width,1))
             blankvol2[ind] = x
     
 
@@ -45,15 +47,15 @@ def getSamples(path1, path2):
     label = np.expand_dims(data['label'], axis=-1)
     
     label2 = np.expand_dims(data2['label'], axis=-1)
-    blanklab2 = np.zeros((90,1248,1248,1))
+    blanklab2 = np.zeros((merge,input_height,input_width,1))
     for ind, row in enumerate(label2):
-        if ind >= 90:
+        if ind >= merge:
             continue
         else:
-            x = np.reshape(row,(384,384))
+            x = np.reshape(row,(mouse_height,mouse_width))
     
-            x = cv2.resize(x,(1248,1248))
-            x = np.reshape(x,(1248,1248,1))
+            x = cv2.resize(x,(input_height,input_width))
+            x = np.reshape(x,(input_height,input_width,1))
             blanklab2[ind] = x
     
     
@@ -61,12 +63,14 @@ def getSamples(path1, path2):
     return np.vstack((volume,blankvol2)), np.vstack((label, blanklab2))
 
 #generator for samples to be passed in fit_generator
-def generateSplit(path1, path2, split= 0.2, validate=1):
+def generateSplit(path1, path2, input_height, input_width,mouse_height, 
+                  mouse_width, merge=160, split= 0.2, validate=1):
     Xtrain = []
     Ytrain = []
     Xval, Yval = [],[]
     
-    vol, seg = getSamples(path1, path2)
+    vol, seg = getSamples(path1, path2,input_height, input_width, mouse_height, 
+                          mouse_width, merge)
     if validate:
         for i in range(len(vol)):
             if random.random() < split:
@@ -77,34 +81,6 @@ def generateSplit(path1, path2, split= 0.2, validate=1):
                 Ytrain.append(seg[i])
                 
     return np.array(Xtrain), np.array(Ytrain), np.array(Xval), np.array(Yval)
-
-      
-# =============================================================================
-# def generateTrainingImages(Xtrain, Ytrain, batch_size, n_classes, input_height, 
-#                            input_width):
-#     while True:
-#         X = []
-#         Y = []
-#         #training on batch 
-#         for i in range(batch_size):
-#             X.append(Xtrain[i])
-#             y = np.reshape(Ytrain[i], (input_height*input_width, n_classes))
-#             Y.append(y)
-#         yield np.array(X), np.array(Y)
-# 
-# 
-# def generateValidationImages(xval, yval):
-#     XVAL = []
-#     YVAL = []
-#     for i in range(1):
-#         y = np.reshape(yval[i], (1248*1248, 1))
-#         XVAL.append(xval[i])
-#         YVAL.append(y)
-# 
-#     yield np.array(XVAL), np.array(YVAL)
-# =============================================================================
-    
-    
     
     
 class MovieGenerator(keras.utils.Sequence):

@@ -15,9 +15,9 @@ from keras import backend as K
 from keras.models import Model
 from keras.layers import Input
 import os
-#X is a tuple of the shape 
-def unet():
-    inp = Input((1248,1248,1))
+
+def NeuronSegNet(input_height, input_width):
+    inp = Input((input_heigh, input_width, 1))
     x = Conv2D(32, (1,1), padding='same', kernel_initializer="glorot_normal")(inp) 
     x = BatchNormalization(axis = 3)(x)
     x = LeakyReLU()(x) 

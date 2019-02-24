@@ -17,24 +17,14 @@ import random
 import os
 from scipy.ndimage import zoom
 
-# =============================================================================
-# parser = argparse.ArgumentParser()
-# parser.add_argument("--save_weights_path", type = str  )
-# parser.add_argument("--epoch_number", type = int, default = 5 )
-# parser.add_argument("--test_images", type = str , default = "")
-# parser.add_argument("--output_path", type = str , default = "")
-# parser.add_argument("--input_height", type=int , default = 224  )
-# parser.add_argument("--input_width", type=int , default = 224 )
-# parser.add_argument("--n_classes", type=int )
-# 
-# args = parser.parse_args()
-# 
-# n_classes = args.n_classes
-# images_path = args.test_images
-# input_width =  args.input_width
-# input_height = args.input_height
-# epoch_number = args.epoch_number
-# =============================================================================
+
+'''
+Note that you have to resize the image if it is not (1248,1248,1). Alternatively, 
+you can remove the input layer of the model and load the convolutional weights 
+and then your own pixelwise classifier on top of them
+'''
+
+#helper to resize the mouse images
 def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
     # initialize the dimensions of the image to be resized and
     # grab the image size
@@ -66,42 +56,32 @@ def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
     # return the resized image
     return resized
 
+#test image is path to test image
+    
+parser = argparse.ArgumentParser()
+parser.add_argument("--test_image", type = str  )
+parser.add_argument("--input_height", type=int , default = 1248  )
+parser.add_argument("--input_width", type=int , default = 1248 )
+parser.add_argument("--load_weights", type = str , default = "")
+parser.add_argument("--output_file", type = str , default = "")
+
+args = parser.parse_args()
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-m = models.unet()
-data= np.load('/home/hsuri/Datathon/fruit_fly_volumes.npz')
+test_image = args.test_image
+input_height = args.input_height
+input_width = args.input_width
+weights = args.load_weights
+output_file = args.output_file
 
 
-volume = np.expand_dims(data['volume'], axis=-1)
-    
-label = np.expand_dims(data['label'], axis=-1)
-    
-
-# =============================================================================
-# m = modelFN( n_classes , input_height=input_height, input_width=input_width   )
-# m.load_weights(  args.save_weights_path + "." + str(  epoch_number )  )
-# m.compile(loss='categorical_crossentropy',
-#       optimizer= 'adadelta' ,
-#       metrics=['accuracy'])
-# =============================================================================
+m = models.NeuronSegNet(input_height, input_width)
 
 m.load_weights('/home/hsuri/Datathon/first_weights.h5')
-
-print(volume[1].shape)
-#x = np.reshape(volume[1],(384,384))
-
-#x = cv2.resize(x,(1248,1248))
-#x = np.reshape(x,(1248,1248,1))
-x = volume[0]
+x = cv2.imread(test_image)
+assert(test_image.shape == (1248,1248,1))
 pr = m.predict( np.array([x]))[0]
-cv2.imwrite('/home/hsuri/Datathon/test3.png',pr)
+cv2.imwrite(output_file,pr)
 
-#y = np.reshape(volume[2],(384,384))
-
-#y = cv2.resize(y,(1248,1248))
-#y = np.reshape(y,(1248,1248,1))
-y = volume[2]
-pr = m.predict( np.array([y]))[0]
-cv2.imwrite('/home/hsuri/Datathon/test4.png',pr)
 
     
 
